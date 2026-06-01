@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wandplus.dev/schema/v1/wand.schema.json",
+  "title": "Wand Declaration",
+  "description": "Declares a Wand: phases, tools, directory contract, and phase gate checks. A Wand App may declare one or more Wands.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Schema version"
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Machine-readable Wand identifier"
+    },
+    "kindVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this Wand definition"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable name for UI display"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of this Wand (UI + agent retrieval). Say what it is AND when to use it."
+    },
+    "directoryContract": {
+      "type": "object",
+      "description": "Directory structure contract for Wand instances",
+      "properties": {
+        "subdirTemplate": {
+          "type": "string",
+          "description": "Template for instance subdirectory (e.g. 'wands/changelog/{wandId}')"
+        },
+        "requiredFiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "File path relative to Wand root"
+              },
+              "managedByBuiltin": {
+                "type": "boolean",
+                "description": "If true, this file is managed by the runtime"
+              }
+            },
+            "required": ["path"],
+            "additionalProperties": false
+          },
+          "description": "Files that must exist in every instance"
+        },
+        "requiredSubdirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subdirectories to create in every instance"
+        },
+        "initialFiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Destination path relative to Wand root"
+              },
+              "templatePath": {
+                "type": "string",
+                "description": "Source template path relative to Wand root"
+              }
+            },
+            "required": ["path", "templatePath"],
+            "additionalProperties": false
+          },
+          "description": "Files to copy from templates on instance creation"
+        }
+      },
+      "required": ["subdirTemplate"],
+      "additionalProperties": false
+    },
+    "workflow": {
+      "type": "object",
+      "description": "Phase-based workflow definition",
+      "properties": {
+        "phaseFlowMode": {
+          "type": "string",
+          "enum": ["linear", "free"],
+          "description": "Phase transition semantics: 'linear' = phases[] order is the flow; 'free' = CheckPhase must pass next_phase"
+        },
+        "initialPhase": {
+          "type": "string",
+          "description": "ID of the first phase"
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]*$",
+                "description": "Phase identifier; must match the wand/phases/<id>/ subdirectory name"
+              },
+              "tools": {
+                "type": "object",
+                "description": "Tool visibility configuration",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": ["allow", "deny"],
+                    "description": "'allow' = only items[] are added on top of the baseline; 'deny' = legacy, operates over the Wand-tool universe"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Tool names for the allow/deny list"
+                  },
+                  "overrides": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Tool name (must be visible in this phase)"
+                        },
+                        "prompt": {
+                          "type": "string",
+                          "description": "Override description that replaces the tool's default prompt segment"
+                        }
+                      },
+                      "required": ["name", "prompt"],
+                      "additionalProperties": false
+                    },
+                    "description": "Per-tool prompt overrides for this phase"
+                  }
+                },
+                "required": ["mode", "items"],
+                "additionalProperties": false
+              },
+              "allowGlobs": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Glob patterns for allowed file writes relative to Wand root (picomatch)"
+              },
+              "cleanupOnRewind": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Glob patterns of files to trash when this phase is skipped by RewindWand (linear mode only)"
+              },
+              "phaseGateCheck": {
+                "type": "object",
+                "description": "Phase pass criteria",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": ["script", "prompt"],
+                    "description": "'script' = run check.js (derived path wand/phases/<id>/check.js); 'prompt' = run check.md (derived path wand/phases/<id>/check.md) via the runtime"
+                  },
+                  "inputSchema": {
+                    "type": "object",
+                    "description": "JSON Schema for CheckPhase tool inputs (validated before invoking the check)"
+                  },
+                  "passCriteria": {
+                    "type": "string",
+                    "description": "Required for mode='prompt': natural-language pass criteria injected into the judge system prompt"
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "minimum": 1000,
+                    "description": "Override default 120000ms timeout for the check"
+                  }
+                },
+                "required": ["mode"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "phaseGateCheck"],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["phaseFlowMode", "initialPhase", "phases"],
+      "additionalProperties": false
+    },
+    "engineeringTools": {
+      "type": "array",
+      "description": "Tools not exposed to the agent, triggered by the host UI or orchestration",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Tool name"
+          },
+          "handler": {
+            "type": "string",
+            "enum": ["script", "binary"],
+            "description": "Handler type"
+          },
+          "scriptPath": {
+            "type": "string",
+            "description": "Path to handler script relative to Wand root"
+          },
+          "inputSchema": {
+            "type": "object",
+            "description": "JSON Schema for tool input"
+          },
+          "errorSurface": {
+            "type": "string",
+            "enum": ["agent_on_unrecoverable", "silent", "ui"],
+            "description": "How to surface errors"
+          }
+        },
+        "required": ["name", "handler"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version", "kind", "kindVersion", "displayName", "description", "directoryContract", "workflow"],
+  "additionalProperties": true
+}
