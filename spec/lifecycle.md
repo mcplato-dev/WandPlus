@@ -302,7 +302,15 @@ active agent conversation). The system prompt MUST include:
 2. The contents of `check.md`.
 3. The `passCriteria` string.
 
-The user prompt MUST be the `CheckPhase` arguments (after `inputSchema` validation).
+The user prompt MUST include the `CheckPhase` arguments (after `inputSchema`
+validation), and SHOULD also include a bounded window of the recent agent
+conversation (most recent turns first to be dropped from the head, long items
+truncated). Without a conversation window, criteria phrased as "the user has
+confirmed X" are unverifiable: the judge either rejects work the user already
+approved, or rubber-stamps whatever the agent self-reports. When a window is
+provided, the framework preamble SHOULD instruct the judge to treat the
+arguments as the agent's claims and cross-check them against the conversation,
+and to name every unmet criterion in the hint rather than only the first.
 
 The judge MUST produce a result in the same shape as a script gate:
 

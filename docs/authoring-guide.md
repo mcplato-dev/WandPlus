@@ -196,9 +196,24 @@ For criteria only a model can assess ("the draft addresses every point in the br
 - File: `wand/phases/<id>/check.md` — instructions for the judge.
 - `passCriteria` (string, required) — natural-language pass condition.
 - The judge runs as an isolated evaluation: system prompt = framework preamble + your `check.md`
-  + `passCriteria`; user prompt = the `CheckPhase` arguments. It returns the same
-  `{ passed, hint }` shape.
+  + `passCriteria`; user prompt = a bounded window of the recent agent conversation plus the
+  `CheckPhase` arguments. It returns the same `{ passed, hint }` shape.
+- The conversation window is what makes "the user confirmed X" criteria verifiable — the
+  judge checks the conversation (structured question/answer rounds count), and treats the
+  `CheckPhase` arguments as the agent's claims to cross-check, not as facts.
 - Same 120 s default timeout; same fail-safe rule (model/parse failure ⇒ fail).
+
+Two practices make prompt gates dramatically more usable:
+
+1. **Declare `inputSchema` even for prompt gates.** The generic `CheckPhase` tool accepts
+   arbitrary fields, so without a schema the agent has no way to discover what your gate
+   expects — it calls `CheckPhase` empty, fails, and guesses. A declared schema (with a
+   `description` per field) is surfaced to the agent as the explicit argument list for the
+   current phase.
+2. **Phrase every criterion so it is verifiable** from the conversation window or the
+   arguments, and instruct the judge to name *every* missing item in its hint — a judge that
+   reports one missing item per attempt creates the same fix-one-recheck loop as a
+   first-match-only script gate.
 
 Prefer `script` when the criterion is mechanical. Reserve `prompt` for genuinely subjective
 gates — it's slower, costs a model call, and is less repeatable.
