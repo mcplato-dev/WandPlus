@@ -216,6 +216,15 @@ interface WandHost {
   openPhaseDrawer(phaseId: string): Promise<void> // ui.openPhaseDrawer
   openDrawer(title: string, markdown: string): Promise<void> // ui.openDrawer
   getRuntimeState(): Promise<RuntimeState>        // runtime.getState
+
+  // --- Convenience wrappers, runtime views only (host rejects in static mode) ---
+  listFiles(): Promise<string[]>                  // runtime.listFiles
+  readFile(path: string): Promise<string>         // runtime.readFile
+  registerNav(spec: { count: number; current: number; labels?: string[] }): Promise<{ ok: true }> // nav.register
+  updateNav(current: number): Promise<{ ok: true }>            // nav.update
+  registerActions(actions: Array<{ id: string; label: string; icon?: string }>): Promise<{ ok: true }> // actions.register
+  toast(level: 'info' | 'success' | 'warning' | 'error', message: string): Promise<{ ok: true }> // ui.toast
+  setStatus(state: 'progress' | 'done' | 'error', message?: string): Promise<{ ok: true }>       // ui.setStatus
 }
 ```
 
@@ -237,11 +246,11 @@ interface HandshakeInfo {
 interface RuntimeState {
   wandId: string
   appId: string
+  displayName: string
   currentPhase: string | null  // null = wand completed
   phaseLog: Array<{
-    phaseId: string
-    enteredAt: string           // ISO 8601
-    passedAt?: string
+    phase: string               // phase id
+    enteredAt: number           // Unix timestamp, milliseconds
   }>
 }
 ```

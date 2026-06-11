@@ -98,9 +98,9 @@ atomically. It MUST be present for the directory to be recognized as a wand docu
 | `displayName` | string | yes | The name given by the user at creation (or updated via rename). |
 | `appVersion` | string | no | `appVersion` of the kind at the time of last interaction. |
 | `currentPhase` | string \| null | no | Active phase `id`, or `null` when the wand is completed. |
-| `phaseLog` | array | no | Append-only record of phase transitions. Each entry: `{ phase: string, completedAt: string (ISO 8601) }`. |
-| `createdAt` | string | no | ISO 8601 timestamp of instance creation. |
-| `updatedAt` | string | no | ISO 8601 timestamp of last state write. |
+| `phaseLog` | array | no | Append-only record of phase entries. Each entry: `{ phase: string, enteredAt: number }` — `enteredAt` is a Unix timestamp in milliseconds, appended when the phase becomes active. |
+| `createdAt` | number | no | Unix timestamp (milliseconds) of instance creation. |
+| `updatedAt` | number | no | Unix timestamp (milliseconds) of last state write. |
 
 **Minimum identity for recognition.** A `.wand.json` file MUST contain `wandId`, `appId`,
 and `displayName` to be considered valid. A marker that contains `kind` (v1 field) but lacks

@@ -8,6 +8,20 @@ refer to the manifest `version` field, not to this repository.
 Protocol v2 is a **clean break**: runtimes do not recognize v1 manifests or
 v1 instance markers.
 
+### Spec corrections (2026-06-11)
+
+Aligned the spec with shipped runtime behavior — no protocol change:
+
+- `.wand.json` timestamps (`createdAt`, `updatedAt`) and `phaseLog[].enteredAt`
+  are **Unix milliseconds (number)**, not ISO 8601 strings; `phaseLog` entries
+  are `{ phase, enteredAt }` (previously documented inconsistently as
+  `{ phase, completedAt }` in bundle.md and `{ phaseId, enteredAt, passedAt? }`
+  in host-api.md).
+- `RuntimeState` includes `displayName`.
+- The SDK now ships named convenience wrappers for the runtime methods
+  (`listFiles`, `readFile`, `registerNav`, `updateNav`, `registerActions`,
+  `toast`, `setStatus`) — pure `call()` sugar, host surface unchanged.
+
 ### Identity — App-Store model
 
 - **`appId` replaces `kind`.** Apps are identified by a globally-unique

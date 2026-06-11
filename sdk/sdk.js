@@ -133,6 +133,28 @@
     },
     getRuntimeState: function () {
       return call('runtime.getState')
+    },
+    // Runtime-view convenience wrappers (host rejects them in static mode).
+    listFiles: function () {
+      return call('runtime.listFiles')
+    },
+    readFile: function (path) {
+      return call('runtime.readFile', { path: path })
+    },
+    registerNav: function (spec) {
+      return call('nav.register', spec)
+    },
+    updateNav: function (current) {
+      return call('nav.update', { current: current })
+    },
+    registerActions: function (actions) {
+      return call('actions.register', { actions: actions })
+    },
+    toast: function (level, message) {
+      return call('ui.toast', { level: level, message: message })
+    },
+    setStatus: function (state, message) {
+      return call('ui.setStatus', { state: state, message: message })
     }
   }
 
