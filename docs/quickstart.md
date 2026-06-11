@@ -316,6 +316,54 @@ Wand from its `description`, calls `CreateWand`, and the runtime will:
 Drive it through both phases. On the final `CheckPhase` pass, `currentPhase` becomes `null`
 (completed) and the tool surface collapses to read-only.
 
+## Step 6 — Give it a face (optional)
+
+A Wand can ship its own UI. The protocol defines two independent view layers — they do
+different jobs:
+
+- **Static view** — the app's *intro page*: what people see when they open the Wand App
+  itself. One clickable diagram of its phases. Without it, the host shows its generic
+  built-in views.
+- **Runtime view** — the *product's live screen*: what people see when they open an instance
+  folder this Wand produced. It keeps updating while the agent works, file by file — and if
+  the artifact itself is an HTML page, that page can simply BE the view.
+
+The changelog example already ships a static view. It is one file,
+[`examples/changelog/view/static/index.html`](../examples/changelog/view/static/index.html):
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'"
+    />
+    <title>Changelog</title>
+    <link rel="stylesheet" href="/__wandhost__/theme.css" />
+    <script src="/__wandhost__/sdk.js"></script>
+    <script src="/__wandhost__/viz.js"></script>
+  </head>
+  <body>
+    <div id="app" class="wv-root" data-wv-mode="flow"></div>
+  </body>
+</html>
+```
+
+That single `data-wv-mode="flow"` div is all the markup: `viz.js` auto-mounts it, fetches the
+Wand's structure through the host SDK, renders the phase flow, follows the host theme, and
+opens the native phase drawer on click. Declare it in the manifest and you're done:
+
+```json
+"presentation": { "static": { "entry": "view/static/index.html" } }
+```
+
+The runtime layer is declared the same way under `presentation.runtime` (entry, `watch`
+globs, `shell` chrome). The full contract — including how hosts group an instance's files by
+phase and surface finished exports — lives in [the presentation spec](../spec/presentation.md)
+and [the host API spec](../spec/host-api.md).
+
 ## What's happening under the hood
 
 Now that you've seen it work, here's the cycle each `CheckPhase` runs through:
@@ -384,6 +432,8 @@ file; the folder name must match the phase `id` exactly.
 - **[Authoring guide](./authoring-guide.md)** — phase design, the full manifest reference,
   script vs. prompt gates, tool opt-in, and the pre-ship checklist.
 - **[Manifest spec](../spec/manifest.md)** — normative field reference.
+- **[Presentation spec](../spec/presentation.md)** / **[Host API spec](../spec/host-api.md)** —
+  the two-layer view model and the `window.wandHost` contract behind Step 6.
 - **[Manifest schema](../schema/wand.schema.json)** — the canonical JSON Schema your `wand.json`
   is validated against.
 - **[`examples/changelog`](../examples/changelog)** — the full Wand you just built, ready to run.

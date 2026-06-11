@@ -9,4 +9,5 @@ and grouped bullets:
     - ...
 
 When the file is ready, call `CheckPhase({ "version": "1.2.0" })` using the real
-version number. On pass, the Wand is complete.
+version number. On pass, the Wand is complete: tell the user the changelog is ready
+at `CHANGELOG.md` inside this Wand's folder, then call `SaveAndCloseWand`.

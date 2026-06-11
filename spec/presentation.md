@@ -125,7 +125,35 @@ chrome layer:
   containing: a phase progress track driven by `state-changed` / `runtime.getState`;
   a real-time status indicator driven by `files-changed`; navigation controls
   wired to `nav.register` / `nav.update` / the `navigate` event; an action toolbar
-  wired to `actions.register` / the `action` event; and a resource/export drawer.
+  wired to `actions.register` / the `action` event; and a resource/export panel
+  as specified in [Instance resources](#instance-resources).
+
+---
+
+## Instance resources
+
+A wand instance is a directory of files, but the end user should never have to read
+it as one. Hosts present an instance's files through a **resource panel** (drawer,
+sidebar, or equivalent) governed by the manifest the app already declares — no
+extra presentation fields are needed:
+
+- **Grouping by stage.** The host SHOULD group instance files by the workflow's
+  phases: each file belongs to the **first phase, in declaration order, whose
+  `allowGlobs` match it**. The phase is the group; its files are that stage's
+  results. This gives `allowGlobs` a second, user-facing meaning beyond the write
+  fence (see [lifecycle.md](./lifecycle.md#2-the-write-fence)) — authors SHOULD
+  write them as "what this stage produces", not merely "what this stage may touch".
+- **Unmatched files.** Files matching no phase (seeded templates, scratch files)
+  SHOULD be collected into a single trailing group, visually de-emphasized (e.g.
+  collapsed by default).
+- **Finished exports.** When a file that constitutes a finished deliverable lands —
+  by convention a top-level export such as `output/<name>.pptx|pdf|docx|xlsx|zip` —
+  the host SHOULD surface it proactively (for example: open the resource panel
+  once and highlight the new file) rather than waiting for the user to look for it.
+- **Liveness.** The panel SHOULD refresh as `files-changed` events arrive, so
+  multi-step output (per-page renders, per-item exports) reads as live progress.
+  Authors SHOULD design for this: write each step to disk as it completes instead
+  of buffering — the files on disk ARE the progress bar.
 
 ---
 

@@ -143,11 +143,19 @@ A phase earns its place when it has a **distinct gate** — a checkpoint where "
 move on" is meaningfully testable. If two stages share the same success criteria, they're one
 phase. Don't split for narration; split for verification.
 
-### `allowGlobs` — the write fence
+### `allowGlobs` — the write fence *and* the user's table of contents
 
 Each phase should only be able to write what that phase is *for*. In a `collect` phase, fence
 to `entries/**`; in `publish`, fence to `CHANGELOG.md`. This does two things: it stops the
 agent from corrupting earlier work, and it makes `cleanupOnRewind` safe and predictable.
+
+They also carry a second, user-facing meaning: hosts group an instance's files by the **first
+phase (in declaration order) whose globs match** — that grouping is how the end user reads
+"this stage's results" in the resource panel, with unmatched files demoted to a collapsed
+trailing group (see the [presentation spec](../spec/presentation.md#instance-resources)).
+Design the output directory tree first, then write each phase's globs as *what it produces*,
+not merely *what it may touch*. By convention, put the final deliverable at the top of
+`output/` (e.g. `output/<name>.pptx`) — hosts surface such exports proactively when they land.
 
 Runtime-owned paths are **always** rejected regardless of globs: `.wand.json`,
 `.wand-sources.json`, the handoff cache, and everything under `sources/`. You never need to
@@ -368,6 +376,10 @@ Before you publish a Wand, confirm:
 **Prompts**
 - [ ] Prompts tell the agent to use Wand tools, never shell `cp`/`mv`.
 - [ ] Each phase prompt ends by telling the agent exactly how to call `CheckPhase`.
+- [ ] The final phase's prompt ends with a completion hand-off: tell the user the
+      deliverable's exact path and how to view it, then `SaveAndCloseWand`.
+- [ ] Multi-step output is written to disk file-by-file as it completes (the files on disk
+      are the progress bar), not buffered and dumped at the end.
 
 ---
 
@@ -383,6 +395,9 @@ Before you publish a Wand, confirm:
   progression and rewind for nothing.
 - **Encyclopedic prompts.** `prompt.md` is shared context on every turn. Say what the agent
   doesn't already know; link out for the rest.
+- **Silent completion.** The Wand finishes and the agent says "done" without telling the user
+  where the deliverable is or how to view it. The runtime does nothing on completion — the
+  hand-off is the final phase prompt's job.
 
 ## Reference
 

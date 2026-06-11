@@ -109,6 +109,11 @@ In the completed state:
 - The runtime SHOULD append a visible notice to the agent's context indicating that the
   wand is sealed and that `CopyWand` is the mechanism for deriving a new version.
 
+The runtime itself does nothing user-facing on completion. The final phase's prompt
+SHOULD therefore direct the agent to hand off explicitly — tell the user where the
+deliverable lives and how to view it — before calling `SaveAndCloseWand` (see the
+[authoring guide](../docs/authoring-guide.md)'s pre-ship checklist).
+
 ---
 
 ## 2. The write fence
