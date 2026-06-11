@@ -206,10 +206,24 @@ gates — it's slower, costs a model call, and is less repeatable.
 ### Writing good hints
 
 The `hint` on a failed gate is returned verbatim to the agent. It's your one channel to steer a
-retry. Name the specific thing that's wrong and, when you can, the fix:
+retry. Four rules decide whether the agent can act on it:
 
-✅ `"CHANGELOG.md must contain a \"## 1.2.0\" heading."`
+1. **Name the file** the violation is in.
+2. **Give the location** — a line number or a short quoted snippet.
+3. **Report every violation** (or the first ~10 plus a total count), never just the first.
+   A first-match-only hint traps the agent in a fix-one-recheck loop: it fixes one
+   occurrence, re-runs the gate, gets told about the next one, and burns a full
+   round-trip per fix.
+4. **Say the next action**, not just what is wrong.
+
+✅ `"CHANGELOG.md has 3 placeholder entries: line 12 \"TBD\", line 40 \"TODO\", line 77 \"TODO\" — replace each with a real entry."`
 ❌ `"validation failed"`
+❌ `"placeholder found in content"` *(which file? where? how many?)*
+
+**Scan only the stage's own outputs.** A gate inspects the paths in its phase's `allowGlobs` —
+never seeded assets or templates. If a gate flags text inside a file the agent cannot
+legitimately change, the agent will edit the seeded file to silence the gate and corrupt the
+Wand.
 
 ---
 
@@ -228,6 +242,15 @@ SaveAndCloseWand  CopyWand  TodoWrite  AskUserQuestion
 
 A Wand that only reads and writes its own files — like the Quickstart's `changelog` — needs
 **no `tools` block at all**.
+
+Two mistakes account for most broken Wands in the wild:
+
+- **Invented modes.** The only valid modes are `"allow"` and `"deny"`. There is no
+  `"baseline"` mode — baseline-only is expressed by *omitting* the `tools` field. A manifest
+  with an invented mode fails validation and cannot be published.
+- **Prompts that promise tools the manifest doesn't grant.** If a phase's `prompt.md` tells
+  the agent to run a script or an external converter (docx, node, python, …), that phase MUST
+  opt in `"Bash"`. The baseline has no shell — the produced Wand simply cannot run that step.
 
 ### Opting in
 
@@ -372,6 +395,8 @@ Before you publish a Wand, confirm:
 **Tools**
 - [ ] No `tools` block unless the phase genuinely needs a non-baseline tool.
 - [ ] Opted-in tools are the minimum the phase requires.
+- [ ] `tools.mode` is `"allow"` (or legacy `"deny"`) — never an invented value.
+- [ ] Every phase whose prompt asks the agent to run a script/converter opts in `"Bash"`.
 
 **Prompts**
 - [ ] Prompts tell the agent to use Wand tools, never shell `cp`/`mv`.
@@ -380,6 +405,10 @@ Before you publish a Wand, confirm:
       deliverable's exact path and how to view it, then `SaveAndCloseWand`.
 - [ ] Multi-step output is written to disk file-by-file as it completes (the files on disk
       are the progress bar), not buffered and dumped at the end.
+- [ ] Rule-heavy phases ship their rules as seeded reference files
+      (`directoryContract.initialFiles`) the agent can re-read at any time, and the phase
+      prompt points at them. Tool results fall out of the agent's context; files on disk
+      do not.
 
 ---
 
@@ -395,6 +424,10 @@ Before you publish a Wand, confirm:
   progression and rewind for nothing.
 - **Encyclopedic prompts.** `prompt.md` is shared context on every turn. Say what the agent
   doesn't already know; link out for the rest.
+- **One-violation-at-a-time hints.** A gate that reports only the first match sends the agent
+  around the fix-one-recheck loop once per occurrence. Collect them all and report the list.
+- **Gates that scan seeded files.** A gate that flags content inside a seeded asset or template
+  pushes the agent to edit the seed to silence it. Scan only the phase's own outputs.
 - **Silent completion.** The Wand finishes and the agent says "done" without telling the user
   where the deliverable is or how to view it. The runtime does nothing on completion — the
   hand-off is the final phase prompt's job.

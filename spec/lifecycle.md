@@ -336,7 +336,15 @@ condition will allow the gate to pass on retry.
 
 **Actionable hints.** When a gate fails, `hint` MUST name the specific problem and,
 where possible, the fix. A hint of `"validation failed"` is insufficient; a hint of
-`"CHANGELOG.md must contain a \"## 1.2.0\" heading."` is actionable.
+`"CHANGELOG.md must contain a \"## 1.2.0\" heading."` is actionable. Hints SHOULD
+identify the file and location (line number or snippet) of **every** violation — or the
+first ~10 plus a total count — not just the first; a first-match-only hint forces one
+gate round-trip per occurrence.
+
+**Output-scoped scanning.** A gate SHOULD inspect only the phase's own outputs (the
+paths matched by that phase's `allowGlobs`), never seeded assets or templates. Flagging
+content the agent cannot legitimately change incentivizes the agent to modify the seeded
+file to satisfy the gate.
 
 ---
 
