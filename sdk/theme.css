@@ -1,0 +1,71 @@
+/*!
+ * wand-host theme — default token values for presentation layers, mirroring the
+ * app's semantic tokens. The host pushes the live theme via the `theme` event
+ * (see sdk.js applyTheme), overriding these on :root so the view follows the
+ * active app theme (classic-dark / daylight / glass / terminal).
+ *
+ * Templates and viz.js consume only var(--wv-*) — never hard-coded colors — so a
+ * single token push re-themes the whole view.
+ */
+:root {
+  --wv-bg: #1a1a1a;
+  --wv-bg-elevated: #242424;
+  --wv-bg-hover: #2d2d2d;
+  --wv-border: #3a3a3a;
+  --wv-border-strong: #4a4a4a;
+  --wv-text: #e0e0e0;
+  --wv-text-dim: #a0a0a0;
+  --wv-text-faint: #707070;
+  --wv-accent: #4a9eff;
+  --wv-accent-soft: rgba(74, 158, 255, 0.15);
+  --wv-edge: rgba(160, 160, 160, 0.45);
+  --wv-radius: 10px;
+  --wv-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --wv-font-mono: 'SF Mono', Monaco, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--wv-bg);
+  color: var(--wv-text);
+  font-family: var(--wv-font);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* viz.js base ----------------------------------------------------------- */
+.wv-root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: auto;
+}
+.wv-legend {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--wv-text-dim);
+  background: color-mix(in srgb, var(--wv-bg) 86%, transparent);
+  border-bottom: 1px solid var(--wv-border);
+  backdrop-filter: blur(6px);
+}
+.wv-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--wv-text-faint);
+  font-size: 13px;
+}
