@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://wandplus.dev/schema/v1/wand.schema.json",
-  "title": "Wand Declaration",
-  "description": "Declares a Wand: phases, tools, directory contract, and phase gate checks. A Wand App may declare one or more Wands.",
+  "$id": "https://raw.githubusercontent.com/mcplato-dev/WandPlus/main/schema/wand.schema.json",
+  "title": "Wand App Declaration",
+  "description": "Declares a wand app (protocol v2): identity, entitlements, phases, tools, directory contract, presentation, and phase gate checks",
   "type": "object",
   "properties": {
     "$schema": {
@@ -11,34 +11,51 @@
     },
     "version": {
       "type": "string",
-      "enum": ["1.0"],
-      "description": "Schema version"
+      "enum": ["2.0"],
+      "description": "Manifest protocol version. v1 ('1.0', kind/kindVersion/subdirTemplate) is no longer recognized."
     },
-    "kind": {
+    "appId": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "Machine-readable Wand identifier"
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*){2}$",
+      "description": "Globally-unique reverse-DNS app identifier with exactly 3 segments: <publisher>.<domain>.<slug>. The first segment is a publisher prefix assigned by the runtime or distribution platform, which guarantees global uniqueness at publish time."
     },
-    "kindVersion": {
+    "appVersion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "description": "Semantic version of this Wand definition"
+      "description": "Semantic version of this wand app"
     },
     "displayName": {
       "type": "string",
-      "description": "Human-readable name for UI display"
+      "description": "Human-readable app name for UI display. Provided by the user at creation time."
+    },
+    "alias": {
+      "type": "string",
+      "description": "User-set rename alias. Overrides displayName in lists and mention search; does not change appId/displayName."
     },
     "description": {
       "type": "string",
-      "description": "Short description of this Wand (UI + agent retrieval). Say what it is AND when to use it."
+      "description": "Short description of this wand app (UI + LLM retrieval)"
+    },
+    "developer": {
+      "type": "string",
+      "description": "Author/organization label. Informational."
+    },
+    "category": {
+      "type": "string",
+      "description": "App-store-like category label (e.g. 'productivity'). Informational."
+    },
+    "minPlatformVersion": {
+      "type": "string",
+      "description": "Minimum wand platform protocol the app requires. Declarative only for now."
     },
     "directoryContract": {
       "type": "object",
-      "description": "Directory structure contract for Wand instances",
+      "description": "Directory structure contract for wand instances",
       "properties": {
-        "subdirTemplate": {
+        "folderName": {
           "type": "string",
-          "description": "Template for instance subdirectory (e.g. 'wands/changelog/{wandId}')"
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Folder name that groups this app's instances. The runtime owns the layout and always assembles wands/<folderName>/<wandId>.wand under its data area; the manifest never declares a path template."
         },
         "requiredFiles": {
           "type": "array",
@@ -47,11 +64,11 @@
             "properties": {
               "path": {
                 "type": "string",
-                "description": "File path relative to Wand root"
+                "description": "File path relative to wand root"
               },
               "managedByBuiltin": {
                 "type": "boolean",
-                "description": "If true, this file is managed by the runtime"
+                "description": "If true, this file is managed by the wand infrastructure"
               }
             },
             "required": ["path"],
@@ -71,11 +88,11 @@
             "properties": {
               "path": {
                 "type": "string",
-                "description": "Destination path relative to Wand root"
+                "description": "Destination path relative to wand root"
               },
               "templatePath": {
                 "type": "string",
-                "description": "Source template path relative to Wand root"
+                "description": "Source template path relative to kind root"
               }
             },
             "required": ["path", "templatePath"],
@@ -84,7 +101,7 @@
           "description": "Files to copy from templates on instance creation"
         }
       },
-      "required": ["subdirTemplate"],
+      "required": ["folderName"],
       "additionalProperties": false
     },
     "workflow": {
@@ -117,7 +134,7 @@
                   "mode": {
                     "type": "string",
                     "enum": ["allow", "deny"],
-                    "description": "'allow' = only items[] are added on top of the baseline; 'deny' = legacy, operates over the Wand-tool universe"
+                    "description": "'allow' = only items[] visible; 'deny' = all except items[] visible"
                   },
                   "items": {
                     "type": "array",
@@ -131,7 +148,7 @@
                       "properties": {
                         "name": {
                           "type": "string",
-                          "description": "Tool name (must be visible in this phase)"
+                          "description": "Tool name (must be in visibleTools)"
                         },
                         "prompt": {
                           "type": "string",
@@ -150,7 +167,7 @@
               "allowGlobs": {
                 "type": "array",
                 "items": { "type": "string" },
-                "description": "Glob patterns for allowed file writes relative to Wand root (picomatch)"
+                "description": "Glob patterns for allowed file writes relative to wand root (picomatch)"
               },
               "cleanupOnRewind": {
                 "type": "array",
@@ -164,7 +181,7 @@
                   "mode": {
                     "type": "string",
                     "enum": ["script", "prompt"],
-                    "description": "'script' = run check.js (derived path wand/phases/<id>/check.js); 'prompt' = run check.md (derived path wand/phases/<id>/check.md) via the runtime"
+                    "description": "'script' = run check.js (derived path wand/phases/<id>/check.js); 'prompt' = run check.md (derived path wand/phases/<id>/check.md) via an isolated judge inference loop"
                   },
                   "inputSchema": {
                     "type": "object",
@@ -172,7 +189,7 @@
                   },
                   "passCriteria": {
                     "type": "string",
-                    "description": "Required for mode='prompt': natural-language pass criteria injected into the judge system prompt"
+                    "description": "Required for mode='prompt': natural-language pass criteria injected into the judge's system prompt"
                   },
                   "timeout": {
                     "type": "integer",
@@ -193,9 +210,69 @@
       "required": ["phaseFlowMode", "initialPhase", "phases"],
       "additionalProperties": false
     },
+    "entitlements": {
+      "type": "object",
+      "description": "Capability declarations (iOS-entitlements analog). Everything the app may reach beyond the per-phase tool/file sandbox is declared here. Extensible: future capabilities (network, filesystem escapes, ...) slot in as new keys.",
+      "properties": {
+        "mcpServers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of external MCP servers this wand activates while open (wand-level, constant across phases). The runtime resolves the names to configured servers and keeps them active for the wand session. Per-phase tool visibility is still governed by phases[].tools.items."
+        }
+      },
+      "additionalProperties": false
+    },
+    "icon": {
+      "type": "string",
+      "description": "Identity-facet icon: a kindRoot-relative svg/png path, or a built-in lucide icon name (e.g. 'wand-2'). Used by app headers, cards, and the file-explorer document-package opener. Runtimes provide a default when absent."
+    },
+    "presentation": {
+      "type": "object",
+      "description": "Presentation-facet declaration: the wand's own custom view(s). Single-page HTML bundles loaded in a sandboxed iframe, driven by the host JSAPI (/__wandhost__/sdk.js). See spec/presentation.md and spec/host-api.md.",
+      "properties": {
+        "static": {
+          "type": "object",
+          "description": "Static (kind-level) view — 'what this wand is'. Shipped with the kind.",
+          "properties": {
+            "entry": {
+              "type": "string",
+              "description": "kindRoot-relative path to the entry HTML. Default 'view/static/index.html'."
+            }
+          },
+          "required": ["entry"],
+          "additionalProperties": false
+        },
+        "runtime": {
+          "type": "object",
+          "description": "Runtime (instance-level) view — the produced artifact. Lives in the instance dir; edited by the agent during a session.",
+          "properties": {
+            "entry": {
+              "type": "string",
+              "description": "wandDir-relative path to the entry HTML. May point directly at the artifact's main HTML (e.g. 'index.html' of a slide deck) or at a dedicated 'view/runtime/index.html'. Served with the instance dir as root."
+            },
+            "watch": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Globs (relative to wandDir) whose changes refresh the runtime view. Filtered host-side; unset = all changes pass through."
+            },
+            "autoOpen": {
+              "type": "boolean",
+              "description": "When true, the file explorer treats the instance folder as a document package (single-opener) and opens this view on click."
+            },
+            "shell": {
+              "type": "boolean",
+              "description": "When true, the host wraps the view in a native shell (phase track, status, nav/actions, export). Default false = full-page."
+            }
+          },
+          "required": ["entry"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "engineeringTools": {
       "type": "array",
-      "description": "Tools not exposed to the agent, triggered by the host UI or orchestration",
+      "description": "Tools not exposed to the LLM, triggered by the host UI or orchestration",
       "items": {
         "type": "object",
         "properties": {
@@ -210,7 +287,7 @@
           },
           "scriptPath": {
             "type": "string",
-            "description": "Path to handler script relative to Wand root"
+            "description": "Path to handler script relative to kind root"
           },
           "inputSchema": {
             "type": "object",
@@ -218,7 +295,7 @@
           },
           "errorSurface": {
             "type": "string",
-            "enum": ["agent_on_unrecoverable", "silent", "ui"],
+            "enum": ["llm_on_unrecoverable", "silent", "ui"],
             "description": "How to surface errors"
           }
         },
@@ -227,6 +304,6 @@
       }
     }
   },
-  "required": ["version", "kind", "kindVersion", "displayName", "description", "directoryContract", "workflow"],
+  "required": ["version", "appId", "appVersion", "displayName", "description", "directoryContract", "workflow"],
   "additionalProperties": true
 }
