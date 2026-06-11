@@ -1,13 +1,20 @@
 {
-  "$schema": "https://wandplus.dev/schema/v1/wand.schema.json",
-  "version": "1.0",
-  "kind": "changelog",
-  "kindVersion": "1.0.0",
+  "$schema": "https://raw.githubusercontent.com/mcplato-dev/WandPlus/main/schema/wand.schema.json",
+  "version": "2.0",
+  "appId": "acme.docs.changelog",
+  "appVersion": "1.0.0",
   "displayName": "Changelog",
   "description": "A release changelog. Two-phase linear flow: collect raw entries, then publish a formatted CHANGELOG.md. Use when the user wants to assemble or update a changelog or release notes.",
+  "developer": "acme",
+  "category": "documentation",
   "directoryContract": {
-    "subdirTemplate": "wands/changelog/{wandId}",
+    "folderName": "changelog",
     "requiredSubdirs": ["entries"]
+  },
+  "presentation": {
+    "static": {
+      "entry": "view/static/index.html"
+    }
   },
   "workflow": {
     "phaseFlowMode": "linear",

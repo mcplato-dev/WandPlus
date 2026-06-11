@@ -13,7 +13,8 @@ its own tools, and its own rules about what can be written and when. Think of it
 difference between *asking a model to write a changelog* and *handing the model a changelog
 that knows how it's supposed to be built*.
 
-In this tutorial you'll declare a `changelog` Wand with a two-phase linear workflow:
+In this tutorial you'll declare a `changelog` Wand app (appId `acme.docs.changelog`) with a
+two-phase linear workflow:
 
 | Phase | Goal | Gate |
 |-------|------|------|
@@ -23,7 +24,7 @@ In this tutorial you'll declare a `changelog` Wand with a two-phase linear workf
 When you're done, an agent will be able to run:
 
 ```
-CreateWand(kind: "changelog", name: "v1.2.0 release")
+CreateWand(app_id: "acme.docs.changelog", name: "v1.2.0 release")
   → WandWrite("entries/auth.md", ...)        # collect phase
   → CheckPhase()                              # gate passes → advances to publish
   → WandWrite("CHANGELOG.md", ...)            # publish phase
@@ -39,8 +40,9 @@ CreateWand(kind: "changelog", name: "v1.2.0 release")
 
 Three primitives carry the whole system. You'll meet all three in this tutorial:
 
-- **Wand** — the *type* declaration (`wand.json`). Defines the directory contract, the phase
-  workflow, and the gate checks. One Wand App can declare many Wands.
+- **Wand App** — the *type* declaration (`wand.json`). Identified by `appId` (reverse-DNS,
+  3 segments). Defines the directory contract, the phase workflow, and the gate checks. One
+  Wand App package can declare many apps.
 - **Phase** — a stage in the workflow. Each phase injects its own instructions, exposes its
   own tools, and constrains which files may be written.
 - **Gate check** — the pass/fail test that advances a phase. Either a script you provide
@@ -94,14 +96,14 @@ This is the machine contract. Every field below is required except where noted.
 
 ```json
 {
-  "$schema": "https://wandplus.dev/schema/v1/wand.schema.json",
-  "version": "1.0",
-  "kind": "changelog",
-  "kindVersion": "1.0.0",
+  "$schema": "https://raw.githubusercontent.com/mcplato-dev/WandPlus/main/schema/wand.schema.json",
+  "version": "2.0",
+  "appId": "acme.docs.changelog",
+  "appVersion": "1.0.0",
   "displayName": "Changelog",
   "description": "A release changelog. Two-phase linear flow: collect raw entries, then publish a formatted CHANGELOG.md. Use when the user wants to assemble or update a changelog or release notes.",
   "directoryContract": {
-    "subdirTemplate": "wands/changelog/{wandId}",
+    "folderName": "changelog",
     "requiredSubdirs": ["entries"]
   },
   "workflow": {
@@ -136,12 +138,18 @@ This is the machine contract. Every field below is required except where noted.
 
 A few things to notice — each maps to a concept you'll reuse in every Wand:
 
+- **`appId`** is the globally unique machine identity — reverse-DNS, exactly 3 segments
+  (`<publisher>.<domain>.<slug>`). The publisher prefix is assigned by the runtime or
+  distribution platform and guarantees global uniqueness; authors never invent it. The example
+  here uses the neutral publisher `acme`.
+- **`appVersion`** is the semver of this app definition. Bump it on changes.
+- **`displayName`** is provided by the human user at creation time, written verbatim.
 - **`description`** is the only text the agent sees when deciding whether to use this Wand
   (via `DescribeWand`) and the only text shown in the UI list. Say *what it is* **and**
   *when to reach for it*. Keep it under ~200 characters.
-- **`directoryContract.subdirTemplate`** decides where instances land. `{wandId}` is
-  substituted at creation time (`wands/changelog/wand_1a2b3c4d`). The path is relative to the
-  runtime's working sandbox.
+- **`directoryContract.folderName`** is a lowercase kebab slug. The runtime owns the layout
+  and assembles `wands/<folderName>/<wandId>.wand` under its data area — you never declare a
+  full path template.
 - **`requiredSubdirs`** are `mkdir -p`'d on creation, so `entries/` exists before the agent
   writes to it.
 - **No `tools` block.** That's deliberate. Every active phase gets a fixed **baseline** for
@@ -201,7 +209,7 @@ A script gate reads the agent's `CheckPhase` arguments and the files on disk, th
 verdict. The contract is small and fixed:
 
 - It receives a JSON object on **stdin**: `{ phase, args, wandDir, wandRoot }`.
-- `WAND_DIR`, `WAND_KIND`, `WAND_PHASE`, `WAND_ROOT` are in the **env**.
+- `WAND_DIR`, `WAND_APP_ID`, `WAND_PHASE`, `WAND_ROOT` are in the **env**.
 - It must print a JSON object as its **last line of stdout**: `{ "passed": boolean, "hint"?: string }`.
 - Exit code `0`. Any crash, non-zero exit, or unparseable output is treated as **`passed: false`** —
   gates are fail-safe by design.
@@ -292,20 +300,16 @@ function emit(passed, hint) {
 > self-correct and retry without a human. A bad hint ("invalid") strands it. Write hints the
 > way you'd write a helpful compiler error.
 
-> **Runtime footnote:** the standard names the gate environment variables `WAND_*`. The first
-> reference runtime (MCPlato) currently still emits the legacy `ARTIFACT_*` names for the same
-> values. If you're targeting that runtime today, read `process.env.WAND_DIR || process.env.ARTIFACT_DIR`
-> until it catches up. This is the only place the old name surfaces.
-
 ## Step 5 — Run it
 
-Package the `changelog/` directory into a Wand App and load it into a Wand-compatible runtime
-(MCPlato is the first reference runtime). Then, in a workspace, ask the agent to use it — e.g.
-*"Start a changelog for the 1.2.0 release."* The agent discovers the Wand from its
-`description`, calls `CreateWand`, and the runtime will:
+Install the `changelog/` Wand App into your runtime and reload, then in a workspace ask the
+agent to use it — e.g. *"Start a changelog for the 1.2.0 release."* The agent discovers the
+Wand from its `description`, calls `CreateWand`, and the runtime will:
 
-1. Generate an id (`wand_<8 hex>`) and create `wands/changelog/<id>/entries/`.
-2. Write the instance state file `.wand.json` with `currentPhase: "collect"`.
+1. Generate a bare 16-hex wandId and create `wands/changelog/<wandId>.wand/entries/` under the
+   runtime's data area.
+2. Write the instance state file `.wand.json` with `wandId`, `appId`, `appVersion`,
+   `displayName`, and `currentPhase: "collect"`.
 3. Enter **Wand mode** — from now until the Wand closes, the agent's system prompt carries
    your `prompt.md` + the `collect` phase prompt, and its tools collapse to your baseline.
 
@@ -336,7 +340,7 @@ workflow history, and it's what powers handoff and rewind later.
 <summary>The agent never offers to create my Wand</summary>
 
 The Wand is discovered by its `description`. Make it specific and include the trigger words a
-user would say ("changelog", "release notes"). Also confirm your Wand App is loaded into the
+user would say ("changelog", "release notes"). Also confirm your Wand App is installed into the
 runtime and visible in the current workspace.
 </details>
 
@@ -347,7 +351,10 @@ Run your `check.js` by hand to see what it prints:
 
 ```bash
 echo '{"phase":"collect","args":{},"wandDir":"/abs/path/to/instance","wandRoot":"/abs/path/to/changelog"}' \
-  | WAND_DIR=/abs/path/to/instance node wand/phases/collect/check.js
+  | WAND_DIR=/abs/path/to/instance \
+    WAND_APP_ID=acme.docs.changelog \
+    WAND_PHASE=collect \
+    node wand/phases/collect/check.js
 ```
 
 The **last line** of stdout must be valid JSON `{ "passed": true }`. A `console.log` for
@@ -376,6 +383,7 @@ file; the folder name must match the phase `id` exactly.
 
 - **[Authoring guide](./authoring-guide.md)** — phase design, the full manifest reference,
   script vs. prompt gates, tool opt-in, and the pre-ship checklist.
+- **[Manifest spec](../spec/manifest.md)** — normative field reference.
 - **[Manifest schema](../schema/wand.schema.json)** — the canonical JSON Schema your `wand.json`
   is validated against.
 - **[`examples/changelog`](../examples/changelog)** — the full Wand you just built, ready to run.

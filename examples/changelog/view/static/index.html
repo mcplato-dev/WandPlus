@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Strict CSP: only same-origin scripts/styles (the /__wandhost__/ SDK). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'"
+    />
+    <title>Changelog</title>
+    <link rel="stylesheet" href="/__wandhost__/theme.css" />
+    <!-- Host SDK + shared visualization toolkit; never bundled, always host-served. -->
+    <script src="/__wandhost__/sdk.js"></script>
+    <script src="/__wandhost__/viz.js"></script>
+  </head>
+  <body>
+    <!-- viz.js auto-mounts any [data-wv-mode] element: it calls wand.get()
+         through the SDK, renders the phase flow, re-themes on host `theme`
+         events, and opens the native phase drawer on click. -->
+    <div id="app" class="wv-root" data-wv-mode="flow"></div>
+  </body>
+</html>

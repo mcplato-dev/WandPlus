@@ -58,12 +58,16 @@ Two non-negotiable conventions:
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `version` | yes | Schema version. Currently `"1.0"`. |
-| `kind` | yes | Machine id. `^[a-z][a-z0-9-]*$`. Unique across loaded Wand Apps. |
-| `kindVersion` | yes | Semver of *this Wand definition*, e.g. `"1.0.0"`. Bump on changes. |
-| `displayName` | yes | Human label for the UI. |
+| `version` | yes | Schema version. Must be `"2.0"`. (v1 manifests using `kind`/`kindVersion` are not recognized.) |
+| `appId` | yes | Globally-unique reverse-DNS identifier, exactly 3 segments: `<publisher>.<domain>.<slug>`. The publisher prefix is assigned by the runtime or distribution platform and guarantees global uniqueness — authors never invent it. |
+| `appVersion` | yes | Semver of *this app definition*, e.g. `"1.0.0"`. Bump on changes. |
+| `displayName` | yes | Provided by the human user at creation time, written verbatim. |
 | `description` | yes | The retrieval text — see [Writing the description](#writing-the-description). |
+| `developer` | no | Author/organization label (informational). |
+| `category` | no | App-store-style category tag (informational). |
+| `minPlatformVersion` | no | Required wand platform protocol floor (declared only). |
 | `directoryContract` | yes | Where instances live and what they contain. |
+| `entitlements` | no | Capability declarations (e.g. `mcpServers`). |
 | `workflow` | yes | The phase flow. |
 | `engineeringTools` | no | Tools triggered by the host UI/orchestration, **not** exposed to the agent. |
 
@@ -75,10 +79,16 @@ Two non-negotiable conventions:
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `subdirTemplate` | yes | Instance path, relative to the runtime's working sandbox. Must contain `{wandId}`. |
+| `folderName` | yes | Lowercase kebab slug (`^[a-z][a-z0-9-]*$`). The runtime owns the layout and assembles `wands/<folderName>/<wandId>.wand` under its data area. Never declare a full path template; the `{wandId}` placeholder mechanism is removed in v2. |
 | `requiredSubdirs` | no | `mkdir -p`'d on creation. Include `"sources"` to enable [cross-Wand composition](#cross-wand-composition). |
 | `initialFiles` | no | `{ path, templatePath }[]` — copied from the Wand's `templates/` into the new instance. |
 | `requiredFiles` | no | `{ path }[]` — files that must exist (validation aid). |
+
+### `entitlements`
+
+| Field | Notes |
+|-------|-------|
+| `mcpServers` | `string[]`. Names of external MCP servers this Wand activates while open (wand-level, constant across phases). The runtime resolves the names to configured servers and keeps them active for the session. Per-phase tool visibility is still governed by `phases[].tools`. |
 
 ### Writing the description
 
@@ -161,7 +171,7 @@ For anything you can verify in code: a file exists, JSON parses, a value matches
 - `inputSchema` (JSON Schema) is **validated before** the script runs — bad arguments never
   reach your code.
 - **Input:** a JSON object on stdin — `{ phase, args, wandDir, wandRoot }`.
-- **Env:** `WAND_DIR`, `WAND_KIND`, `WAND_PHASE`, `WAND_ROOT`.
+- **Env:** `WAND_DIR`, `WAND_APP_ID`, `WAND_PHASE`, `WAND_ROOT`.
 - **Output:** the **last line of stdout** must be `{ "passed": boolean, "hint"?: string }`.
 - **Runtime:** the runtime's bundled Node.js (not the system `PATH`); `cwd` is the Wand
   instance directory.
@@ -260,6 +270,35 @@ change it is `CopyWand` to derive a new version.
 
 ---
 
+## The presentation layer
+
+A Wand is an **app**, not just a prompt. Beyond logic, it can ship its own custom view so
+it doesn't look like every other generic workflow. Declare it in the manifest:
+
+```jsonc
+{
+  "icon": "wand-2",
+  "presentation": {
+    "static": { "entry": "view/static/index.html" }
+  }
+}
+```
+
+The static view shows *what this Wand is* at a glance — a single-page HTML bundle running in a
+sandboxed iframe, communicating with the host through the **wand-host SDK**. The optional
+runtime view shows *what this instance produced*, live while the agent is working, and can point
+directly at the artifact's own HTML.
+
+For the full API contract, container options (`full-page`, `shell`, `HUD`), live-refresh
+protocol, and starter templates, see:
+
+- **[Presentation spec](../spec/presentation.md)** — view lifecycle, manifest fields, and
+  design rules.
+- **[Host API spec](../spec/host-api.md)** — the complete `window.wandHost` surface and event
+  reference.
+
+---
+
 ## Lifecycle semantics you should design around
 
 ### Completion
@@ -292,7 +331,7 @@ When one Wand is built *from* others (a video from scenes, a report from dataset
 `"sources"` in `requiredSubdirs`. That unlocks the `sources` argument on `CreateWand`:
 
 ```
-CreateWand(kind: "report", name: "Q3", sources: [{ wand_id: "wand_ab12cd34" }])
+CreateWand(app_id: "acme.analysis.report", name: "Q3", sources: [{ wand_id: "a3f8c2d1e9b04f72" }])
 ```
 
 The runtime mounts each source as a **read-only symlink** under `sources/<mountName>/`. The
@@ -351,10 +390,10 @@ Before you publish a Wand, confirm:
 
 | Tool | Needs open Wand | Purpose |
 |------|:-:|---------|
-| `CreateWand(kind, name, sources?)` | no | Create a new instance, enter Wand mode |
+| `CreateWand(app_id, name, sources?)` | no | Create a new instance, enter Wand mode |
 | `OpenWand(wand_id)` | no | Resume an existing instance |
 | `ListWands(dir)` | no | Recursively list instances under a directory |
-| `DescribeWand(kind)` | no | Inspect a Wand's phases/contract without creating one |
+| `DescribeWand(app_id)` | no | Inspect a Wand's phases/contract without creating one |
 | `CopyWand(wand_id, display_name?)` | no | Fork to a fresh, versioned instance |
 | `WandWrite(file_path, content? \| source_path?)` | yes | Write text, or copy a binary in |
 | `WandEdit(file_path, old_string, new_string)` | yes | String-replace edit |
@@ -370,12 +409,18 @@ Before you publish a Wand, confirm:
 | Phase id pattern | `^[a-z][a-z0-9_-]*$` |
 | Free-mode completion sentinel | `"__FINAL__"` |
 | Default gate timeout | 120 000 ms |
-| Wand instance id format | `wand_<8 hex>` |
+| Wand id format | bare 16 hex; instance directory `<wandId>.wand` |
 | Instance discovery max depth | 20 |
+| appId pattern | `^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){2}$` (exactly 3 segments) |
 
 ## Next steps
 
 - **[Quickstart](./quickstart.md)** — build a Wand end to end if you haven't yet.
+- **[Manifest spec](../spec/manifest.md)** — normative field reference.
+- **[Bundle spec](../spec/bundle.md)** — how Wand Apps are packaged and discovered.
+- **[Lifecycle spec](../spec/lifecycle.md)** — phase transitions, state file format, rewind semantics.
+- **[Presentation spec](../spec/presentation.md)** — custom views, iframe sandbox, view containers.
+- **[Host API spec](../spec/host-api.md)** — complete `window.wandHost` surface.
 - **[Manifest schema](../schema/wand.schema.json)** — the canonical contract your `wand.json`
   is checked against.
 - **[`examples/changelog`](../examples/changelog)** — a complete, runnable reference Wand.
