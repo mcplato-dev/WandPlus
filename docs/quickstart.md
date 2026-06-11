@@ -437,3 +437,7 @@ file; the folder name must match the phase `id` exactly.
 - **[Manifest schema](../schema/wand.schema.json)** — the canonical JSON Schema your `wand.json`
   is validated against.
 - **[`examples/changelog`](../examples/changelog)** — the full Wand you just built, ready to run.
+
+---
+
+Official site: [wandplus.dev](https://wandplus.dev) · Reference runtime: [MCPlato](https://mcplato.com)

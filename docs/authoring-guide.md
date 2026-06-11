@@ -439,3 +439,7 @@ Before you publish a Wand, confirm:
 - **[Manifest schema](../schema/wand.schema.json)** — the canonical contract your `wand.json`
   is checked against.
 - **[`examples/changelog`](../examples/changelog)** — a complete, runnable reference Wand.
+
+---
+
+Official site: [wandplus.dev](https://wandplus.dev) · Reference runtime: [MCPlato](https://mcplato.com)
