@@ -88,6 +88,20 @@ artifact's primary HTML file (for example, `index.html` for a slide deck whose
 product is the page itself) or at a dedicated view file such as
 `view/runtime/index.html`.
 
+**Entry reachability.** Because the entry resolves inside the instance — and an
+instance contains only the contract's seeded files plus what the phases write —
+the entry MUST be reachable through one of exactly two channels:
+
+1. **artifact-as-view**: the entry path is matched by some phase's `allowGlobs`
+   (a phase produces it at runtime); or
+2. **dedicated page**: the entry, and every companion file it loads (scripts,
+   styles), is listed in `directoryContract.initialFiles` so it is copied into
+   every new instance.
+
+A runtime page that exists only in the definition bundle is unreachable: every
+instance renders the placeholder forever. Runtimes SHOULD reject such manifests
+at install/publish time with a hint naming both fixes.
+
 The host MUST serve the runtime view with **`wandDir` as the HTTP root**. This
 means the view can reference any file in the instance directory via relative URLs —
 including production artifacts in subdirectories — without any additional
@@ -150,6 +164,9 @@ extra presentation fields are needed:
   by convention a top-level export such as `output/<name>.pptx|pdf|docx|xlsx|zip` —
   the host SHOULD surface it proactively (for example: open the resource panel
   once and highlight the new file) rather than waiting for the user to look for it.
+  HTML deliverables are deliberately NOT auto-surfaced (an HTML artifact is
+  usually the view itself); a view whose deliverable is HTML SHOULD surface it by
+  calling `ui.openResources` with the file's path at its own completion moment.
 - **Liveness.** The panel SHOULD refresh as `files-changed` events arrive, so
   multi-step output (per-page renders, per-item exports) reads as live progress.
   Authors SHOULD design for this: write each step to disk as it completes instead

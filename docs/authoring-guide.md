@@ -332,8 +332,27 @@ it doesn't look like every other generic workflow. Declare it in the manifest:
 
 The static view shows *what this Wand is* at a glance — a single-page HTML bundle running in a
 sandboxed iframe, communicating with the host through the **wand-host SDK**. The optional
-runtime view shows *what this instance produced*, live while the agent is working, and can point
-directly at the artifact's own HTML.
+runtime view shows *what this instance produced*, live while the agent is working.
+
+Pick the runtime view's shape from the **business**, not the tech:
+
+1. **The artifact IS the view** — when the final deliverable is (or can be) a single-page
+   HTML (report, deck, dashboard), declare the artifact's own path as `runtime.entry` and embed
+   a small host adapter at the end of the page. The user watches the deliverable assemble itself.
+2. **Phase board** — when the product is structured data or many files, ship ONE dedicated page
+   with one screen per phase: show that phase's business state (`runtime.readFile` over its
+   outputs), switch screens on `state-changed`, and let the final screen embed the deliverable
+   via an instance-relative `<iframe>`. You never ship per-phase HTML files.
+3. **Skip** — only when the product is genuinely non-visual.
+
+**Hard rule — entry reachability.** `runtime.entry` resolves inside the **instance**, so it must
+be either a phase-produced path (covered by that phase's `allowGlobs`) or seeded into every
+instance via `directoryContract.initialFiles` (the entry AND every companion file). A page that
+exists only in the definition bundle leaves every instance on the placeholder forever.
+
+**Surface the deliverable.** Top-level `output/*.pptx|pdf|docx|xlsx|zip` exports pop the host's
+resource panel automatically; HTML deliverables don't — call
+`wandHost.openResources({ path: 'output/report.html' })` from the view at its completion moment.
 
 For the full API contract, container options (`full-page`, `shell`, `HUD`), live-refresh
 protocol, and starter templates, see:

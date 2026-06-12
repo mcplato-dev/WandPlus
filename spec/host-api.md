@@ -225,6 +225,8 @@ interface WandHost {
   registerActions(actions: Array<{ id: string; label: string; icon?: string }>): Promise<{ ok: true }> // actions.register
   toast(level: 'info' | 'success' | 'warning' | 'error', message: string): Promise<{ ok: true }> // ui.toast
   setStatus(state: 'progress' | 'done' | 'error', message?: string): Promise<{ ok: true }>       // ui.setStatus
+  openResources(opts?: { phaseId?: string; path?: string }): Promise<{ ok: true }>               // ui.openResources
+  closeResources(): Promise<{ ok: true }>                                                        // ui.closeResources
 }
 ```
 
@@ -289,6 +291,8 @@ These methods are available when `HandshakeInfo.mode === "runtime"`.
 | `actions.register` | `{ actions: Array<{ id: string, label: string, icon?: string }> }` | `{ ok: true }` | Register custom action buttons. When `shell: true`, the host renders them in a toolbar. Cap: 8 actions maximum. Replaces any previously registered actions |
 | `ui.toast` | `{ level: 'info' \| 'success' \| 'warning' \| 'error', message: string }` | `{ ok: true }` | Display a brief transient notification. Host-side rate limit: ≤ 2 toasts per second |
 | `ui.setStatus` | `{ state: 'progress' \| 'done' \| 'error', message?: string }` | `{ ok: true }` | Set a persistent status indicator in the shell (or the HUD in shell-less mode). Overrides the default pulse shown on `files-changed`. Cleared automatically on the next `files-changed` cycle unless called again |
+| `ui.openResources` | `{ phaseId?: string, path?: string }` | `{ ok: true }` | Open the host's resource panel. `phaseId` focuses that phase's group; `path` highlights one instance file. Views use this to surface deliverables the host does not auto-surface (HTML reports, dashboards) at the business moment — run completed, export landed |
+| `ui.closeResources` | — | `{ ok: true }` | Close the resource panel |
 
 ---
 

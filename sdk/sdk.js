@@ -155,6 +155,16 @@
     },
     setStatus: function (state, message) {
       return call('ui.setStatus', { state: state, message: message })
+    },
+    // Resource panel (the host's execution-results drawer). `opts` may carry
+    // `phaseId` (focus that phase's group) and/or `path` (highlight one
+    // instance file — e.g. the final deliverable when the run completes).
+    openResources: function (opts) {
+      opts = opts || {}
+      return call('ui.openResources', { phaseId: opts.phaseId, path: opts.path })
+    },
+    closeResources: function () {
+      return call('ui.closeResources')
     }
   }
 
