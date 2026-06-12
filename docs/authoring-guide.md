@@ -388,6 +388,16 @@ leaves no stale output. In the Quickstart, `publish` sets `cleanupOnRewind: ["CH
 (`Foo` → `Foo v2`). It's available in every phase and in the completed state — it's the
 sanctioned "start a new version from this one" move.
 
+### Revising a published Wand
+
+Publishing the same `appId` again upgrades the published bundle in place — that is the
+sanctioned revision mechanism. Runtimes with a publishing catalog typically support a
+revision entry (`IterateWand`) that pre-seeds a fresh authoring instance with the
+published definition and records `iterateSource` in the instance state (see
+[lifecycle §1.6](../spec/lifecycle.md)). When authoring an iteration, treat the seeded
+definition as the confirmed baseline and confirm only the *change request* with the
+user; keep the `appId` unless the user explicitly wants a separate new bundle.
+
 ---
 
 ## Cross-Wand composition (`sources`)

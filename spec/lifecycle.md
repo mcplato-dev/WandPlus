@@ -114,6 +114,24 @@ SHOULD therefore direct the agent to hand off explicitly — tell the user where
 deliverable lives and how to view it — before calling `SaveAndCloseWand` (see the
 [authoring guide](../docs/authoring-guide.md)'s pre-ship checklist).
 
+### 1.6 Revision provenance (optional `iterateSource`)
+
+A runtime that hosts a publishing catalog MAY support a **revision workflow**: creating
+a new instance whose working files are pre-seeded from an already-published bundle's
+current definition, so that re-publishing under the same `appId` upgrades the published
+bundle in place.
+
+When it does, the runtime SHOULD record the provenance in the instance state as:
+
+```json
+"iterateSource": { "appId": "<source appId>", "displayName": "<source display name>" }
+```
+
+set once at creation. This makes the revision identity durable instance state — prompts
+and gates can branch on it (e.g., treat the seeded definition as a confirmed baseline
+instead of re-eliciting it) without relying on transient conversation text. The field
+MUST NOT be carried over by `CopyWand` (§6): a copy is a fresh run, not a revision.
+
 ---
 
 ## 2. The write fence
@@ -438,6 +456,14 @@ CreateWand    OpenWand    ListWands    DescribeWand
 
 `CopyWand` is also available regardless of wand state (both active and completed).
 
+A runtime that hosts a publishing catalog MAY additionally expose two revision-entry
+tools, scoped to its authoring surface:
+
+- `ListPublishedWands()` — list the published bundles the current user can revise.
+- `IterateWand(app_id, name?)` — create a revision instance pre-seeded from the
+  published bundle's definition, recording `iterateSource` (§1.6) and entering wand
+  mode like `CreateWand`.
+
 ---
 
 ## 5. Rewind
@@ -611,6 +637,9 @@ availability context and one-line purpose.
   of phase-level tool configuration.
 - `CreateWand`, `OpenWand`, `ListWands`, and `DescribeWand` are **entry/discovery
   tools** available at all times and do not require an open instance.
+- Runtimes that host a publishing catalog MAY additionally expose the optional
+  revision-entry tools `ListPublishedWands()` and `IterateWand(app_id, name?)`
+  (§4.5, §1.6); neither requires an open instance.
 
 ---
 
